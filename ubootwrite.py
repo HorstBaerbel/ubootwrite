@@ -6,6 +6,7 @@ import os
 import struct
 import sys
 import zlib
+import time
 
 debug = False
 if not debug:
@@ -30,9 +31,8 @@ def getprompt(ser, addr, verbose):
                 ser.write(LINE_FEED)
                 # Read the response
                 buf = ser.read(256);
-                if (buf.endswith(b"=> ")):
-                        if verbose:
-                                print("Ok, prompt is '", buf, "'", sep='', file = sys.stderr)
+                if (buf.endswith(b"=> ") or buf.endswith(b"# ")):
+                        print("Prompt is '", buf[2:], "'", sep='', file = sys.stderr)
                         # The prompt returned starts with a line feed. This is the echo of the line feed we send to get the prompt.
                         # We keep this linefeed
                         return buf
@@ -45,9 +45,7 @@ def getprompt(ser, addr, verbose):
 def writecommand(ser, command, prompt, verbose):
 
         # Write the command and a line feed, so we must get back the command and the prompt
-        ser.write(command)
-        ser.write(LINE_FEED)
-        
+        ser.write(command + LINE_FEED)
         buf = ser.read(len(command))
         if (buf != command):
                 if verbose:
@@ -87,6 +85,8 @@ def memwrite(ser, path, size, start_addr, verbose, debug):
         addr = start_addr
         bytes_read = 0
         crc32_checksum = 0
+        startTime = time.time();
+        bytesLastSecond = 0
         while (bytes_read < size):
                 if ((size - bytes_read) > 4):           
                         read_bytes = fd.read(4);
@@ -98,6 +98,7 @@ def memwrite(ser, path, size, start_addr, verbose, debug):
                                 size = bytes_read
                         break
 
+                bytesLastSecond += len(read_bytes)
                 bytes_read += len(read_bytes)
                 crc32_checksum = zlib.crc32(read_bytes, crc32_checksum) & 0xFFFFFFFF
                 
@@ -110,14 +111,21 @@ def memwrite(ser, path, size, start_addr, verbose, debug):
                 str_to_write = "mw {0:08x} {1:08x}".format(addr, val)
                 if verbose:
                         print("Writing:", str_to_write, "at:", "0x{0:08x}".format(addr), file = sys.stderr)
-
                 if debug:
                         str_to_write = struct.pack(">L", int("{0:08x}".format(val), 16))
-
-                if not debug:
+                else:
                         if not writecommand(ser, str_to_write, prompt, verbose):
                                 print("Found an error, so aborting", file = sys.stderr)
+                                fd.close()
                                 return
+                        # Print progress
+                        currentTime = time.time();
+                        if ((currentTime - startTime) > 1):
+                                print("\rProgress {:2.1f}%".format((bytes_read * 100) / size), end="", file = sys.stderr)
+                                print(", {:3.1f}kb/s".format(bytesLastSecond / (currentTime - startTime) / 1024), end="", file = sys.stderr)
+                                print(", ETA {0}s   ".format(round((size - bytes_read) / bytesLastSecond / (currentTime - startTime))), end="", file = sys.stderr)
+                                bytesLastSecond = 0
+                                startTime = time.time();
 
                 # Increment address
                 addr += 4
@@ -125,14 +133,17 @@ def memwrite(ser, path, size, start_addr, verbose, debug):
         if (bytes_read != size):
                 print("Error while reading file '", fd.name, "' at offset ", bytes_read, sep='', file = sys.stderr)
         else:
-                print("File successfully written. You should run command 'crc32", " {0:08x}".format(start_addr), " {0:08x}".format(bytes_read), "' on the modem and the result must be", " {0:08x}".format(crc32_checksum), ".", sep='', file = sys.stderr)
-                
+                print("\rProgress 100%                            ", file = sys.stderr)
+                print("File successfully written. You should run 'crc32", " {0:08x}".format(start_addr), " {0:08x}".format(bytes_read), "' on the modem and the result must be", " {0:08x}".format(crc32_checksum), ".", sep='', file = sys.stderr)
+                print("To copy from RAM to flash, unprotect flash: 'protect off all'...")
+                print("Then erase flash: 'erase", " {0:08x}".format((start_addr - 0x80000000) + 0xb0000000), " +{0:08x}".format(bytes_read), "'.", sep='', file = sys.stderr)
+                print("Then copy from RAM to flash: 'cp.b", " {0:08x}".format(start_addr), " {0:08x}".format((start_addr - 0x80000000) + 0xb0000000), " {0:08x}".format(bytes_read), "'.", sep='', file = sys.stderr)
+
         fd.close()
         return
 
 def main():
-
-        optparser = OptionParser("usage: %prog [options]", version = "%prog 0.1")
+        optparser = OptionParser("usage: %prog [options]", version = "%prog 0.2")
         optparser.add_option("--verbose", action = "store_true", dest = "verbose", help = "be verbose", default = False)
         optparser.add_option("--serial", dest = "serial", help = "specify serial port", default = "/dev/ttyUSB0", metavar = "dev")
         optparser.add_option("--write", dest = "write", help = "write mem from file", metavar = "path")
@@ -143,7 +154,7 @@ def main():
                 optparser.error("incorrect number of arguments")
 
         if not debug:
-                ser = serial.Serial(options.serial, 115200, timeout=1)
+                ser = serial.Serial(options.serial, 115200, timeout=0.1)
         else:
                 ser = open(options.write + ".out", "wb")
         
