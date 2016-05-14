@@ -31,7 +31,7 @@ def getprompt(ser, addr, verbose):
                 ser.write(LINE_FEED)
                 # Read the response
                 buf = ser.read(256);
-                if (buf.endswith(b"=> ") or buf.endswith(b"# ")):
+                if (buf.endswith(b"> ") or buf.endswith(b"# ")):
                         print("Prompt is '", buf[2:], "'", sep='', file = sys.stderr)
                         # The prompt returned starts with a line feed. This is the echo of the line feed we send to get the prompt.
                         # We keep this linefeed
