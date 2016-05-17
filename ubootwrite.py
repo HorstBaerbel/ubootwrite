@@ -25,14 +25,14 @@ def getprompt(ser, addr, verbose):
         while ser.read(256):
                 pass
         if verbose:
-                print("Waiting for a prompt...", file = sys.stderr)
+                print("Waiting for a prompt...")
         while True:
                 # Write carriage return and wait for a response
                 ser.write(LINE_FEED)
                 # Read the response
                 buf = ser.read(256);
                 if (buf.endswith(b"> ") or buf.endswith(b"# ")):
-                        print("Prompt is '", buf[2:], "'", sep='', file = sys.stderr)
+                        print("Prompt is '" + buf[2:] + "'")
                         # The prompt returned starts with a line feed. This is the echo of the line feed we send to get the prompt.
                         # We keep this linefeed
                         return buf
@@ -49,20 +49,20 @@ def writecommand(ser, command, prompt, verbose):
         buf = ser.read(len(command))
         if (buf != command):
                 if verbose:
-                        print("Echo command not received. Instead received '", buf, "'", sep='', file = sys.stderr)
+                        print("Echo command not received. Instead received '" + buf + "'")
                 return False
 
         if verbose:
-                print("Waiting for prompt...", file = sys.stderr)
+                print("Waiting for prompt...")
         
         buf = ser.read(len(prompt))
         if (buf == prompt):
                 if verbose:
-                        print("Ok, prompt received", file = sys.stderr)
+                        print("Ok, prompt received")
                 return True
         else:
                 if verbose:
-                        print("Prompt not received. Instead received '", buf, "'", sep='', file = sys.stderr)
+                        print("Prompt not received. Instead received '" + buf + "'")
                 return False
 
 def memwrite(ser, path, size, start_addr, verbose, debug):
@@ -110,20 +110,20 @@ def memwrite(ser, path, size, start_addr, verbose, debug):
 
                 str_to_write = "mw {0:08x} {1:08x}".format(addr, val)
                 if verbose:
-                        print("Writing:", str_to_write, "at:", "0x{0:08x}".format(addr), file = sys.stderr)
+                        print("Writing:" + str_to_write + "at:", "0x{0:08x}".format(addr))
                 if debug:
                         str_to_write = struct.pack(">L", int("{0:08x}".format(val), 16))
                 else:
                         if not writecommand(ser, str_to_write, prompt, verbose):
-                                print("Found an error, so aborting", file = sys.stderr)
+                                print("Found an error, so aborting")
                                 fd.close()
                                 return
                         # Print progress
                         currentTime = time.time();
                         if ((currentTime - startTime) > 1):
-                                print("\rProgress {:2.1f}%".format((bytes_read * 100) / size), end="", file = sys.stderr)
-                                print(", {:3.1f}kb/s".format(bytesLastSecond / (currentTime - startTime) / 1024), end="", file = sys.stderr)
-                                print(", ETA {0}s   ".format(round((size - bytes_read) / bytesLastSecond / (currentTime - startTime))), end="", file = sys.stderr)
+                                print("\rProgress {:2.1f}%".format((bytes_read * 100) / size))
+                                print(", {:3.1f}kb/s".format(bytesLastSecond / (currentTime - startTime) / 1024))
+                                print(", ETA {0}s   ".format(round((size - bytes_read) / bytesLastSecond / (currentTime - startTime))))
                                 bytesLastSecond = 0
                                 startTime = time.time();
 
@@ -131,13 +131,13 @@ def memwrite(ser, path, size, start_addr, verbose, debug):
                 addr += 4
 
         if (bytes_read != size):
-                print("Error while reading file '", fd.name, "' at offset ", bytes_read, sep='', file = sys.stderr)
+                print("Error while reading file '", fd.name, "' at offset " + bytes_read)
         else:
-                print("\rProgress 100%                            ", file = sys.stderr)
-                print("File successfully written. You should run 'crc32", " {0:08x}".format(start_addr), " {0:08x}".format(bytes_read), "' on the modem and the result must be", " {0:08x}".format(crc32_checksum), ".", sep='', file = sys.stderr)
+                print("\rProgress 100%                            ")
+                print("File successfully written. You should run 'crc32" + " {0:08x}".format(start_addr) + " {0:08x}".format(bytes_read) + "' on the modem and the result must be" + " {0:08x}".format(crc32_checksum) + ".")
                 print("To copy from RAM to flash, unprotect flash: 'protect off all'...")
-                print("Then erase flash: 'erase", " {0:08x}".format((start_addr - 0x80000000) + 0xb0000000), " +{0:08x}".format(bytes_read), "'.", sep='', file = sys.stderr)
-                print("Then copy from RAM to flash: 'cp.b", " {0:08x}".format(start_addr), " {0:08x}".format((start_addr - 0x80000000) + 0xb0000000), " {0:08x}".format(bytes_read), "'.", sep='', file = sys.stderr)
+                print("Then erase flash: 'erase" + " {0:08x}".format((start_addr - 0x80000000) + 0xb0000000) + " +{0:08x}".format(bytes_read) + "'.")
+                print("Then copy from RAM to flash: 'cp.b", " {0:08x}".format(start_addr), " {0:08x}".format((start_addr - 0x80000000) + 0xb0000000) + " {0:08x}".format(bytes_read), "'.")
 
         fd.close()
         return
@@ -162,7 +162,7 @@ def main():
                 prompt = getprompt(ser, options.verbose)
                 writecommand(ser, "mw 80500000 01234567", prompt, options.verbose)
                 buf = ser.read(256)
-                print("buf = '", buf, "'", sep = "")
+                print("buf = '" + buf + "'")
                 return
 
         if options.write:
