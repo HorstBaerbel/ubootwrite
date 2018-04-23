@@ -9,7 +9,7 @@ Basically it can only be [GPLv3](http://opensource.org/licenses/GPL-3.0), becaus
 
 Dependencies
 ========
-python(3)
+python(3)  
 python(3)-serial
 
 Overview
