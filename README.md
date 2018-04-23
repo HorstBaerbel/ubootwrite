@@ -7,6 +7,11 @@ License
 ========
 Basically it can only be [GPLv3](http://opensource.org/licenses/GPL-3.0), because [brntool](https://github.com/rvalles/brntool) is. See [LICENSE.md](LICENSE.md).
 
+Dependencies
+========
+python(3)
+python(3)-serial
+
 Overview
 ========
 Use Python (preferably 3.0+) to run the tool: ```python ubootwrite.py [OPTIONS]```.  
