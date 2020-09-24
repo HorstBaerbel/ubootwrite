@@ -10,17 +10,17 @@ import time
 
 debug = False
 if not debug:
-        import serial
+        from serial import Serial
 
 # The maximum size to transfer if we can determinate the size of the file (if input data comes from stdin).
 MAX_SIZE = 2 ** 30
-LINE_FEED = "\n"
+LINE_FEED = "\n" # Some systems might expect "\r\n"
 
 # Wait for the prompt
 def getprompt(ser, addr, verbose):
 
         # Send a command who does not produce a result so when receiving the next line feed, only show the prompt will be returned
-        ser.write("mw {0:08x} 0".format(addr) + LINE_FEED)
+        ser.write(str.encode("mw {0:08x} 0".format(addr) + LINE_FEED))
         # Flushing read buffer
         while ser.read(256):
                 pass
@@ -28,7 +28,7 @@ def getprompt(ser, addr, verbose):
                 print("Waiting for a prompt...")
         while True:
                 # Write carriage return and wait for a response
-                ser.write(LINE_FEED)
+                ser.write(str.encode(LINE_FEED))
                 # Read the response
                 buf = ser.read(256);
                 if (buf.endswith(b"> ") or buf.endswith(b"# ")):
@@ -45,7 +45,7 @@ def getprompt(ser, addr, verbose):
 def writecommand(ser, command, prompt, verbose):
 
         # Write the command and a line feed, so we must get back the command and the prompt
-        ser.write(command + LINE_FEED)
+        ser.write(str.encode(command + LINE_FEED))
         buf = ser.read(len(command))
         if (buf != command):
                 if verbose:
